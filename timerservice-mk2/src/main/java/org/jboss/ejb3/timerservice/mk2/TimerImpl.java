@@ -687,6 +687,9 @@ public class TimerImpl implements Timer
       sb.append(" ");
       sb.append("timerState=");
       sb.append(this.timerState);
+      sb.append(" ");
+      sb.append("timerInfo=");
+      sb.append(this.info);
 
       return sb.toString();
    }
