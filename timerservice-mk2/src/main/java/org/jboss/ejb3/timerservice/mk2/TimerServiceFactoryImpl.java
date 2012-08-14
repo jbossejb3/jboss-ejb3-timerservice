@@ -23,6 +23,8 @@ package org.jboss.ejb3.timerservice.mk2;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import javax.ejb.TimerService;
 import javax.persistence.EntityManagerFactory;
@@ -72,8 +74,13 @@ public class TimerServiceFactoryImpl implements TimerServiceFactory
     */
    public TimerService createTimerService(TimedObjectInvoker invoker)
    {
+	  int coreThreadPool = getSystemProperty("jboss.timerservice.coreThreadPoolSize", 20);
+	  int maxThreadPool = getSystemProperty("jboss.timerservice.maxThreadPoolSize", 50);
+	  int keepAliveTimeSec = getSystemProperty("jboss.timerservice.keepAliveTimeSec", 300);
       // TODO: inject
-      executor = Executors.newScheduledThreadPool(10);
+      executor = Executors.newScheduledThreadPool(coreThreadPool);
+      ((ScheduledThreadPoolExecutor) executor).setMaximumPoolSize(maxThreadPool);
+      ((ScheduledThreadPoolExecutor) executor).setKeepAliveTime(keepAliveTimeSec, TimeUnit.SECONDS);
 
       // create the timer service
       TimerServiceImpl timerService = new TimerServiceImpl(invoker, emf, transactionManager, executor);
@@ -183,5 +190,29 @@ public class TimerServiceFactoryImpl implements TimerServiceFactory
          }
       }
    }
+   
+	private int getSystemProperty(String property, int defaultValue) {
+		int value = defaultValue;
+		StringBuilder msgFail = new StringBuilder();
+		try {
+			msgFail.append("No system property found for '").append(property)
+					.append("'. Using default value-").append(defaultValue);
+			String prop = System.getProperty(property);
+			if (prop != null && prop.trim().length() > 0) {
+				value = Integer.valueOf(prop);
+				StringBuilder msgSuccess = new StringBuilder(
+						"System property: ").append(property).append("=")
+						.append(value);
+				logger.info(msgSuccess.toString());
+			} else {
+				logger.warn(msgFail.toString());
+			}
+		} catch (Exception e) {
+			msgFail.append(":").append(e.getMessage());
+			logger.warn(msgFail.toString());
+			logger.debug(msgFail.toString(), e);
+		}
+		return value;
+	}
 
 }

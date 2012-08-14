@@ -661,21 +661,14 @@ public class TimerServiceImpl implements TimerService
       boolean newTxStarted = false;
       try
       {
-         previousTx = this.transactionManager.getTransaction();
-         // we persist with REQUIRED tx semantics
-         // if there's no current tx in progress, then create a new one
-         if (previousTx == null)
-         {
-            this.startNewTx();
-            newTxStarted = true;
-         }
+    	  newTxStarted = manageTx();
 
-         EntityManager em = this.getCurrentEntityManager();
-         // merge the state
-         TimerEntity mergedTimerEntity = em.merge(timerEntity);
+    	  EntityManager em = this.getCurrentEntityManager();
+    	  // merge the state
+    	  TimerEntity mergedTimerEntity = em.merge(timerEntity);
 
-         // do the actual persistence
-         em.persist(mergedTimerEntity);
+    	  // do the actual persistence
+    	  em.persist(mergedTimerEntity);
 
       }
       catch (Throwable t)
@@ -692,7 +685,17 @@ public class TimerServiceImpl implements TimerService
             this.endTx();
          }
       }
-
+//      int st = -1;
+//      try {
+//    	  Transaction tx = this.transactionManager.getTransaction();
+//    	  if (tx!= null) {
+//    		  st = tx.getStatus();
+//    	  }
+//      } catch (Exception e) {
+//    	  st = -2;
+//    	  logger.warn("Error on getting tx status: ", e);
+//      }
+//      logger.warn("Transaction status on exiting persistTimer()- " + st);
    }
 
    /**
@@ -777,7 +780,10 @@ public class TimerServiceImpl implements TimerService
    {
       // get the current transaction
       Transaction tx = this.getTransaction();
-      if (tx != null)
+      /**
+       * @author Sarang Anajwala: Fixed bug of 'Already ABORTED transaction'.
+       */
+      if (tx != null && isTxActive(tx))
       {
          try
          {
@@ -813,7 +819,7 @@ public class TimerServiceImpl implements TimerService
       
       // if there's no transaction, then trigger a schedule immidiately.
       // Else, the timer will be scheduled on tx synchronization callback
-      if (this.getTransaction() == null)
+      if (this.getTransaction() == null || !isTxActive(this.getTransaction()))
       {
          // create and schedule a timer task
          timer.scheduleTimeout();
@@ -943,13 +949,15 @@ public class TimerServiceImpl implements TimerService
    {
       String id = timerHandle.getId();
       String timedObjectId = timerHandle.getTimedObjectId();
+      
+      manageTx();
       EntityManager em = this.emf.createEntityManager();
       Query query = em.createQuery("from TimerEntity t where t.id = :id and t.timedObjectId = :timedObjectId");
       query.setParameter("id", id);
       query.setParameter("timedObjectId", timedObjectId);
 
       List<TimerEntity> timers = query.getResultList();
-      if (timers == null || timers.isEmpty())
+      if (timers == null || timers.isEmpty())	
       {
          return null;
       }
@@ -978,6 +986,8 @@ public class TimerServiceImpl implements TimerService
       ineligibleTimerStates.add(TimerState.CANCELED);
       ineligibleTimerStates.add(TimerState.EXPIRED);
 
+      manageTx();
+      
       EntityManager em = this.emf.createEntityManager();
 
       Query activeTimersQuery = em
@@ -1170,7 +1180,7 @@ public class TimerServiceImpl implements TimerService
       try
       {
          Transaction tx = this.transactionManager.getTransaction();
-         if (tx != null)
+         if (tx != null && !isTxActive(tx))
          {
             tx.setRollbackOnly();
          }
@@ -1333,7 +1343,7 @@ public class TimerServiceImpl implements TimerService
          return em;
       }
       Transaction tx = this.transactionManager.getTransaction();
-      if (tx == null)
+      if (tx == null || !isTxActive(tx))
       {
          throw new IllegalStateException("No transaction in progress. Cannot create an entity manager");
       }
@@ -1344,4 +1354,60 @@ public class TimerServiceImpl implements TimerService
 
       return em;
    }
+   
+   private boolean isTxActive(Transaction tx) {
+       boolean isTxActive = false;
+       try {
+			if (tx.getStatus() == Status.STATUS_ACTIVE
+					|| tx.getStatus() == Status.STATUS_PREPARED
+					|| tx.getStatus() == Status.STATUS_PREPARING) {
+				isTxActive = true;
+			}
+       } catch (SystemException se) {
+      	 isTxActive = false;
+      	 logger.debug(
+      			 "SystemException while getting transaction status: ",
+      			 se);
+       } catch (Exception e) {
+      	 isTxActive = false;
+      	 logger.debug(
+      			 "Unknown Exception while getting transaction status: ",
+      			 e);
+       }
+       return isTxActive;
+   }
+   
+	private boolean manageTx() {
+		Transaction previousTx = null;
+		boolean newTxStarted = false;
+		try {
+			previousTx = this.transactionManager.getTransaction();
+			// we persist with REQUIRED tx semantics
+			// if there's no current tx in progress, then create a new one
+			/**
+			 * @author Sarang Anajwala: Fixed bug of 'Already ABORTED
+			 *         transaction'.
+			 */
+			if (previousTx == null) {
+				this.startNewTx();
+				newTxStarted = true;
+			} else if (!isTxActive(previousTx)) {
+				logger.info("Transaction is not active: Current status - "
+						+ previousTx.getStatus());
+				this.endTx();
+				if (previousTx.getStatus() != Status.STATUS_NO_TRANSACTION) {
+					logger.debug("Transaction is still associated: Current status - "
+							+ previousTx.getStatus());
+					previousTx = this.transactionManager.suspend();
+					this.startNewTx();
+					newTxStarted = true;
+				}
+				Transaction newTx = this.transactionManager.getTransaction();
+				logger.info("New Transaction status - " + newTx.getStatus());
+			}
+		} catch (Exception e) {
+			logger.error("Exception : ", e);
+		}
+		return newTxStarted;
+	}
 }
