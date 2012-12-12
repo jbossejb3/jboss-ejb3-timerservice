@@ -69,15 +69,14 @@ public abstract class AbstractTimerTestCase
     * Target directory
     */
    protected static final File TARGET_DIRECTORY = new File(BASEDIR, "target");
-   
-   @AfterClass
+ 
    public static void afterClass() throws Exception
    {
       if(server != null)
          server.shutdown();
    }
    
-   @BeforeClass
+  
    public static void beforeClass() throws Exception
    {
       server = new ServerImpl();

@@ -21,8 +21,7 @@
  */
 package org.jboss.ejb3.timer.schedule.value;
 
-import java.util.ArrayList;
-import java.util.List;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -34,9 +33,9 @@ import javax.ejb.ScheduleExpression;
  * 
  * <p>
  *  Each side of the range must be an individual attribute value. Members of a range <b>cannot</b> themselves 
- *  be lists, wild-cards, ranges, or increments. In range ”x-y”, if x is larger than y, the range is equivalent 
- *  to “x-max, min-y”, where max is the largest value of the corresponding attribute and min is the
- *  smallest. The range “x-x”, where both range values are the same, evaluates to the single value x.
+ *  be lists, wild-cards, ranges, or increments. In range "x-y", if x is larger than y, the range is equivalent 
+ *  to "x-max, min-y", where max is the largest value of the corresponding attribute and min is the
+ *  smallest. The range "x-x", where both range values are the same, evaluates to the single value x.
  * </p>
  *
  * @see ScheduleExpressionType#RANGE

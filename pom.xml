@@ -28,6 +28,7 @@
         <version.jboss.logging.spi>2.1.1.GA</version.jboss.logging.spi>
         <version.jboss.logging.log4j>2.1.1.GA</version.jboss.logging.log4j>
         <version.jboss.ejb.metadata>2.0.0-alpha-16</version.jboss.ejb.metadata>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
     <!-- Aggregate Modules -->
@@ -237,4 +238,21 @@
       <url>http://github.com/jbossejb3/jboss-ejb3-timerservice</url>
    </scm>
 
+   <dependencies>
+   	<dependency>
+   		<groupId>org.jboss.kernel</groupId>
+   		<artifactId>jboss-kernel</artifactId>
+   		<version>2.2.0.Alpha9</version>
+   		<exclusions>
+   			<exclusion>
+   				<artifactId>jboss-common-core</artifactId>
+   				<groupId>org.jboss</groupId>
+   			</exclusion>
+   			<exclusion>
+   				<artifactId>dtdparser121</artifactId>
+   				<groupId>wutka-dtdparser</groupId>
+   			</exclusion>
+   		</exclusions>
+   	</dependency>
+   </dependencies>
 </project>
