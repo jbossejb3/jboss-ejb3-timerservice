@@ -115,7 +115,6 @@ public class TimerTask<T extends TimerImpl> implements Runnable {
 
 			if (!this.timerService.refreshAndLockTimer(this.timer)) {
 				//this instance didn't get the lock.... other will do the timeout..
-				//
 				Date nextTimeout = this.calculateNextTimeout();
 				this.timer.setNextTimeout(nextTimeout);
 				this.timer.scheduleTimeout();
@@ -133,10 +132,10 @@ public class TimerTask<T extends TimerImpl> implements Runnable {
 			if (this.timer.isActive() == false) {
 				logger.debug("Timer is not active, skipping this scheduled execution at: "
 						+ now);
+				return;
 			}
 
 			// checking if we got the lock
-
 			if(!this.timer.getNextTimeout().before(now)){
 				this.timer.scheduleTimeout();
 				return;
