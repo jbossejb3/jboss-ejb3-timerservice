@@ -394,7 +394,7 @@ public class TimerServiceImpl implements TimerService {
 		}
 
 		// now get all active persistent timers for this timerservice
-		activeTimers.addAll(this.getActiveTimers());
+		activeTimers.addAll(this.getActiveTimers(false));
 		return activeTimers;
 	}
 
@@ -500,7 +500,7 @@ public class TimerServiceImpl implements TimerService {
 		// the ejb deployer duplicating the timer
 		// TODO: check if this can be solved at the deployer level
 		if (timeoutMethod != null) {
-			List<TimerImpl> activeTimers = getActiveTimers();
+			List<TimerImpl> activeTimers = getActiveTimers(false);
 			for (TimerImpl timerImpl : activeTimers) {
 				// is a calendar timer with a method?
 				if (timerImpl.isAutoTimer()) {
@@ -510,8 +510,8 @@ public class TimerServiceImpl implements TimerService {
 					if (otherTimerMethod.equals(timeoutMethod)) {
 						// is the same schedule ?
 						if (isEquals(schedule,
-								otherTimer.getScheduleExpression())){
-							if(!runningTimers.containsKey(otherTimer.getId())){
+								otherTimer.getScheduleExpression())) {
+							if (!runningTimers.containsKey(otherTimer.getId())) {
 								startTimer(otherTimer);
 							}
 							return otherTimer;
@@ -789,15 +789,16 @@ public class TimerServiceImpl implements TimerService {
 		}
 
 		Map<String, Object> properties = new HashMap<String, Object>();
-		properties.put("javax.persistence.lock.timeout", 2000);
+		properties.put("javax.persistence.lock.timeout", 1000);
 
 		// refresh the timer data from database and lock it
 		try {
-			timerEntity = em.find(timerEntity.getClass(), timerEntity.getId(),LockModeType.PESSIMISTIC_WRITE, properties);
+			timerEntity = em.find(timerEntity.getClass(), timerEntity.getId(),
+					LockModeType.PESSIMISTIC_WRITE, properties);
 			timer.persistentState = timerEntity;
 			timer.refreshFromPersistence();
 		} catch (Exception e) {
-			e.printStackTrace();
+			// e.printStackTrace();
 			return false;
 		}
 
@@ -843,13 +844,12 @@ public class TimerServiceImpl implements TimerService {
 	 */
 	public void restoreTimers() {
 
-		syncTimersWithPersistence();
+		syncTimersWithPersistence(false);
 		checkNewTimers = executor.scheduleWithFixedDelay(new CheckNewTimers(),
 				CHECK_DELAY, CHECK_DELAY, TimeUnit.SECONDS);
 	}
-	
-	
-	private void syncTimersWithPersistence(){
+
+	private void syncTimersWithPersistence(boolean lock) {
 		Transaction previousTx = null;
 		boolean newTxStarted = false;
 		try {
@@ -858,16 +858,26 @@ public class TimerServiceImpl implements TimerService {
 				startNewTx();
 				newTxStarted = true;
 			}
+			
+			Map<String, TimerImpl> runningTimersCopy = new HashMap<String, TimerImpl>(runningTimers);
 
-			List<TimerImpl> activeTimers = getActiveTimers();
+			List<TimerImpl> activeTimers = getActiveTimers(lock);
 			for (TimerImpl timerImpl : activeTimers) {
-				if (!runningTimers.containsKey(timerImpl.getId())) {
+				TimerImpl runningCopy = runningTimersCopy.get(timerImpl.getId());
+				if (runningCopy == null) {
 					startTimer(timerImpl);
+				} else if(!runningCopy.isActive()){
+					//TODO: deal with failing timer
+					runningCopy.setTimerState(TimerState.ACTIVE);
+					startTimer(timerImpl);
+					
 				}
 			}
 
-			for (TimerImpl runningTimer : runningTimers.values()) {
-				if(!runningTimer.isActive()){
+			
+			for (TimerImpl runningTimer : runningTimersCopy.values()) {
+				if (!runningTimer.isActive()) {
+					runningTimers.remove(runningTimer.getId());
 					continue;
 				}
 				if (runningTimer.isPersistent()) {
@@ -875,13 +885,14 @@ public class TimerServiceImpl implements TimerService {
 					// transaction
 					boolean found = false;
 					for (TimerImpl timerImpl : activeTimers) {
-						if(timerImpl.getId().equals(runningTimer.getId())){
+						if (timerImpl.getId().equals(runningTimer.getId())) {
 							found = true;
 							break;
 						}
 					}
-					
+
 					if (!found) {
+						runningTimers.remove(runningTimer.getId());
 						runningTimer.cancel();
 					}
 				}
@@ -950,7 +961,7 @@ public class TimerServiceImpl implements TimerService {
 	 */
 	protected void startInTx(TimerImpl timer) {
 		// timer.setTimerState(TimerState.ACTIVE);
-		//this.persistTimer(timer);
+		// this.persistTimer(timer);
 
 		// if there's no transaction, then trigger a schedule immidiately.
 		// Else, the timer will be scheduled on tx synchronization callback
@@ -1048,12 +1059,12 @@ public class TimerServiceImpl implements TimerService {
 	 * @param timer
 	 */
 	protected void cancelTimeout(TimerImpl timer) {
+		runningTimers.remove(timer.getId());
 		TimerHandle handle = timer.getTimerHandle();
 		Future<?> scheduleFuture = this.scheduledTimerFutures.get(handle);
 		if (scheduleFuture != null) {
 			scheduleFuture.cancel(false);
 		}
-
 	}
 
 	private boolean isSingletonBeanInvocation() {
@@ -1097,7 +1108,7 @@ public class TimerServiceImpl implements TimerService {
 
 	}
 
-	private List<TimerImpl> getActiveTimers() {
+	private List<TimerImpl> getActiveTimers(boolean lock) {
 		// we need only those timers which correspond to the
 		// timed object invoker to which this timer service belongs. So
 		// first get hold of the timed object id
@@ -1131,8 +1142,8 @@ public class TimerServiceImpl implements TimerService {
 			activeTimersQuery.setParameter("timedObjectId", timedObjectId);
 			activeTimersQuery
 					.setParameter("timerStates", ineligibleTimerStates);
-			activeTimersQuery.setLockMode(LockModeType.PESSIMISTIC_WRITE);
-			
+			if (lock)
+				activeTimersQuery.setLockMode(LockModeType.PESSIMISTIC_WRITE);
 
 			List<TimerEntity> persistedTimers = activeTimersQuery
 					.getResultList();
@@ -1211,9 +1222,9 @@ public class TimerServiceImpl implements TimerService {
 
 		@Override
 		public void run() {
-			try{
-				syncTimersWithPersistence();
-			}catch(Exception e){
+			try {
+				syncTimersWithPersistence(true);
+			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		}

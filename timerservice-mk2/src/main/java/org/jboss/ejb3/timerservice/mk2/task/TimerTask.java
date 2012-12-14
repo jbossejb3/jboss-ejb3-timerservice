@@ -114,10 +114,15 @@ public class TimerTask<T extends TimerImpl> implements Runnable {
 			}
 
 			if (!this.timerService.refreshAndLockTimer(this.timer)) {
-				//this instance didn't get the lock.... other will do the timeout..
+				// this instance didn't get the lock.... other will do the
+				// timeout..
 				Date nextTimeout = this.calculateNextTimeout();
-				this.timer.setNextTimeout(nextTimeout);
-				this.timer.scheduleTimeout();
+				if (nextTimeout == null) {
+					timer.cancel();
+				} else {
+					this.timer.setNextTimeout(nextTimeout);
+					this.timer.scheduleTimeout();
+				}
 				return;
 			}
 
@@ -136,11 +141,11 @@ public class TimerTask<T extends TimerImpl> implements Runnable {
 			}
 
 			// checking if we got the lock
-			if(!this.timer.getNextTimeout().before(now)){
+			if (!this.timer.getNextTimeout().before(now)) {
 				this.timer.scheduleTimeout();
 				return;
 			}
-			
+
 			// set the current date as the "previous run" of the timer.
 			this.timer.setPreviousRun(now);
 			Date nextTimeout = this.calculateNextTimeout();
