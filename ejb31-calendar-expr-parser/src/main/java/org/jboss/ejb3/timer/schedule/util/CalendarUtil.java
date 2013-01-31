@@ -42,7 +42,9 @@ public class CalendarUtil
     */
    public static int getLastDateOfMonth(Calendar calendar)
    {
-      Calendar tmpCal = new GregorianCalendar(calendar.getTimeZone());
+	  Calendar tmpCal = new GregorianCalendar();
+	  tmpCal.clear();
+	  tmpCal.setTimeZone(calendar.getTimeZone());
       tmpCal.set(Calendar.YEAR, calendar.get(Calendar.YEAR));
       tmpCal.set(Calendar.MONTH, calendar.get(Calendar.MONTH));
       tmpCal.set(Calendar.DAY_OF_MONTH, 1);
