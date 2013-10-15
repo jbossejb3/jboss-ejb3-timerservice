@@ -84,7 +84,20 @@ public class TimerServiceImpl implements TimerService {
 	 */
 	private static Logger logger = Logger.getLogger(TimerServiceImpl.class);
 
-	private static final long CHECK_DELAY = 10; // 10 seconds
+	private static long CHECK_DELAY; // 10 seconds
+	static {
+		String str = System.getProperty("jboss.timerservice.database.refresh");
+		if (str != null) {
+			CHECK_DELAY = Long.parseLong(str);
+			if (CHECK_DELAY == 0) {
+				// just disable refresh
+			} else if (CHECK_DELAY < 10) {
+				CHECK_DELAY = 10;
+			}
+		} else {
+			CHECK_DELAY = 10 * 60; // 10 minutes
+		}
+	}
 
 	/**
 	 * The {@link TimedObjectInvoker} which is responsible for invoking the
@@ -824,7 +837,9 @@ public class TimerServiceImpl implements TimerService {
 			// suspend the timer
 			((TimerImpl) timer).suspend();
 		}
-		checkNewTimers.cancel(true);
+		if (checkNewTimers != null) {
+			checkNewTimers.cancel(true);
+		}
 	}
 
 	/**
@@ -845,8 +860,11 @@ public class TimerServiceImpl implements TimerService {
 	public void restoreTimers() {
 
 		syncTimersWithPersistence(false);
-		checkNewTimers = executor.scheduleWithFixedDelay(new CheckNewTimers(),
-				CHECK_DELAY, CHECK_DELAY, TimeUnit.SECONDS);
+		if (CHECK_DELAY > 0) {
+			checkNewTimers = executor.scheduleWithFixedDelay(
+					new CheckNewTimers(), CHECK_DELAY, CHECK_DELAY,
+					TimeUnit.SECONDS);
+		}
 	}
 
 	private void syncTimersWithPersistence(boolean lock) {
@@ -858,23 +876,24 @@ public class TimerServiceImpl implements TimerService {
 				startNewTx();
 				newTxStarted = true;
 			}
-			
-			Map<String, TimerImpl> runningTimersCopy = new HashMap<String, TimerImpl>(runningTimers);
+
+			Map<String, TimerImpl> runningTimersCopy = new HashMap<String, TimerImpl>(
+					runningTimers);
 
 			List<TimerImpl> activeTimers = getActiveTimers(lock);
 			for (TimerImpl timerImpl : activeTimers) {
-				TimerImpl runningCopy = runningTimersCopy.get(timerImpl.getId());
+				TimerImpl runningCopy = runningTimersCopy
+						.get(timerImpl.getId());
 				if (runningCopy == null) {
 					startTimer(timerImpl);
-				} else if(!runningCopy.isActive()){
-					//TODO: deal with failing timer
+				} else if (!runningCopy.isActive()) {
+					// TODO: deal with failing timer
 					runningCopy.setTimerState(TimerState.ACTIVE);
 					startTimer(timerImpl);
-					
+
 				}
 			}
 
-			
 			for (TimerImpl runningTimer : runningTimersCopy.values()) {
 				if (!runningTimer.isActive()) {
 					runningTimers.remove(runningTimer.getId());
