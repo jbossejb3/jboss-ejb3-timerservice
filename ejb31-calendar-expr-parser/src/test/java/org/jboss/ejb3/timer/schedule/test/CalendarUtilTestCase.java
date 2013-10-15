@@ -47,6 +47,7 @@ public class CalendarUtilTestCase
    {
       // check last date of march
       Calendar march = new GregorianCalendar();
+	  march.clear();
       march.set(Calendar.MONTH, Calendar.MARCH);
 
       int lastDateOfMarch = CalendarUtil.getLastDateOfMonth(march);
@@ -54,6 +55,7 @@ public class CalendarUtilTestCase
 
       // check for april
       Calendar april = new GregorianCalendar();
+	  april.clear();
       april.set(Calendar.MONTH, Calendar.APRIL);
 
       int lastDateOfApril = CalendarUtil.getLastDateOfMonth(april);
@@ -61,6 +63,7 @@ public class CalendarUtilTestCase
 
       // check of february (non-leap year)
       Calendar nonLeapFebruary = new GregorianCalendar();
+	  nonLeapFebruary.clear();
       nonLeapFebruary.set(Calendar.MONTH, Calendar.FEBRUARY);
       nonLeapFebruary.set(Calendar.YEAR, 2010);
 
@@ -69,6 +72,7 @@ public class CalendarUtilTestCase
 
       // check for february (leap year)
       Calendar leapFebruary = new GregorianCalendar();
+	  leapFebruary.clear();
       leapFebruary.set(Calendar.MONTH, Calendar.FEBRUARY);
       leapFebruary.set(Calendar.YEAR, 2012);
 
@@ -95,6 +99,7 @@ public class CalendarUtilTestCase
       // 1st Mon of June 2009
       int expectedDateOfFirstMonOfJune2009 = 1;
       Calendar june2009 = new GregorianCalendar();
+	  june2009.clear();
       june2009.set(Calendar.MONTH, Calendar.JUNE);
       june2009.set(Calendar.YEAR, 2009);
 
@@ -105,6 +110,7 @@ public class CalendarUtilTestCase
       // 1st Tue of Feb 2012
       int expectedDateOfFirstTueOfFeb2012 = 7;
       Calendar feb2012 = new GregorianCalendar();
+	  feb2012.clear();
       feb2012.set(Calendar.MONTH, Calendar.FEBRUARY);
       feb2012.set(Calendar.YEAR, 2012);
 
@@ -125,6 +131,7 @@ public class CalendarUtilTestCase
       // 1st Thu of June 1999
       int expectedDateOfFirstThuOfSep1999 = 2;
       Calendar sep1999 = new GregorianCalendar();
+	  sep1999.clear();
       sep1999.set(Calendar.MONTH, Calendar.SEPTEMBER);
       sep1999.set(Calendar.YEAR, 1999);
 
@@ -192,6 +199,7 @@ public class CalendarUtilTestCase
       // 2nd Wed of Apr 2010
       int expectedDateOfSecWedApr2010 = 14;
       Calendar apr2010 = new GregorianCalendar();
+	  apr2010.clear();
       apr2010.set(Calendar.MONTH, Calendar.APRIL);
       apr2010.set(Calendar.YEAR, 2010);
 
@@ -212,6 +220,7 @@ public class CalendarUtilTestCase
       // 2nd Fri of Nov 2020
       int expectedDateOfSecFriNov2020 = 13;
       Calendar nov2020 = new GregorianCalendar();
+	  nov2020.clear();
       nov2020.set(Calendar.MONTH, Calendar.NOVEMBER);
       nov2020.set(Calendar.YEAR, 2020);
 
@@ -222,6 +231,7 @@ public class CalendarUtilTestCase
       // 2nd Sat of Sep 2013
       int expectedDateOfSecSatOfSep2013 = 14;
       Calendar aug2000 = new GregorianCalendar();
+	  aug2000.clear();
       aug2000.set(Calendar.MONTH, Calendar.SEPTEMBER);
       aug2000.set(Calendar.YEAR, 2013);
 
